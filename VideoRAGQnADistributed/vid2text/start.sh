@@ -5,13 +5,15 @@ python -m http.server 7999 --bind 0.0.0.0 --directory /vid2text/videos &
 
 # process all video: fill the 2 database with prepared video
 
-# Check the value of the GENERATE environment variable
+# Check the value of the GENERATE environment variable for embed
 if [ "$GENERATE" = "False" ]; then
   python generate_store_embeddings.py --config config.yaml --db chroma --generate False
   python generate_store_embeddings.py --config config.yaml --db vdms --generate False
+  python generate_store_embeddings.py --config config.yaml --db hsm --generate False
 else
-  python generate_store_embeddings.py --config config.yaml --db chroma
-  python generate_store_embeddings.py --config config.yaml --db vdms
+  python generate_store_embeddings.py --config config.yaml --db chroma --generate True
+  python generate_store_embeddings.py --config config.yaml --db vdms --generate True
+  python generate_store_embeddings.py --config config.yaml --db hsm --generate True
 fi
 
 # service on demand on 7777: save video & desc & ingest, get decription, init database for selected db

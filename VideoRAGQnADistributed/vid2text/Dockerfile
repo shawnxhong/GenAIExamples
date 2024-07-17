@@ -21,9 +21,6 @@ RUN . /root/vid2text/bin/activate && \
     pip install --no-cache-dir -r requirements.txt && \
     deactivate
 
-RUN . /root/vid2text/bin/activate && \
-    pip install datetime && deactivate
-
 ENV PATH=/root/vid2text/bin:$PATH
 
 COPY ./vid2text /vid2text/
