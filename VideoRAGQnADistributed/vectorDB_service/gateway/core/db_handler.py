@@ -17,6 +17,8 @@ from langchain_community.embeddings.sentence_transformer import (
 from langchain_experimental.open_clip import OpenCLIPEmbeddings
 from langchain_core.runnables import ConfigurableField
 from dateparser.search import search_dates
+from hsmlib.HSM import HSM
+from hsmlib.client_grpc import HSMClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,18 +47,18 @@ class DB_Handler:
         # hash map to store the client, db & retiever handshake.
         self.client = {}
 
-        self.text_db = {"chroma":{},"vdms":{}}
-        self.image_db = {"chroma":{},"vdms":{}}
+        self.text_db = {"chroma":{},"vdms":{}, "hsm":{}}
+        self.image_db = {"chroma":{},"vdms":{}, "hsm":{}}
 
-        self.text_retriever = {"chroma":{},"vdms":{}}
-        self.image_retriever = {"chroma":{},"vdms":{}}
+        self.text_retriever = {"chroma":{},"vdms":{}, "hsm":{}}
+        self.image_retriever = {"chroma":{},"vdms":{}, "hsm":{}}
 
         # initialize_db
         self.get_db_client()
 
         # for visual rag
-        self.selected_db = "chroma"
-        self.update_image_retriever = {"chroma": None,"vdms": None}
+        self.selected_db = "hsm"
+        self.update_image_retriever = {"chroma": None,"vdms": None, "hsm": None}
 
     def set_proxy(self, addr:str):
         # for DNS: "http://child-prc.intel.com:913"
@@ -110,11 +112,17 @@ class DB_Handler:
                 host=vectordb_service_host_ip,
                 port=self.configs['vdms_service']['port']
             )
+            logging.info("Connecting to HSM db server . . .")
+            self.client["hsm"] = HSMClient(
+                host=vectordb_service_host_ip, 
+                port=self.configs["hsm_service"]["port"]
+            )
         except Exception as e:
             logging.error(
                 f"Client connection failed:\n"
                 f"Chroma: {vectordb_service_host_ip}:{self.configs['chroma_service']['port']}\n"
                 f"VDMS: {vectordb_service_host_ip}:{self.configs['vdms_service']['port']}\n"
+                f"HSM: {vectordb_service_host_ip}:{self.configs['hsm_service']['port']}\n"
                 f"{e}",
                 exc_info=True
             )
@@ -148,6 +156,14 @@ class DB_Handler:
                     collection_name = table,
                     engine = "FaissFlat",
                 )
+            if db_name == 'hsm':
+                logging.info(table)
+                self.text_db[db_name][table] = HSM (
+                    client = self.client[db_name],
+                    embedding_function = self.text_embedder,
+                    collection_name = table,
+                    persist_directory ="/tmp/hsm/",
+                )
                 
             self.text_retriever[db_name][table] = self.text_db[db_name][table].as_retriever().configurable_fields(
                 search_kwargs=ConfigurableField(
@@ -172,6 +188,15 @@ class DB_Handler:
                     collection_name = table,
                     engine = "FaissFlat",
                 )
+            
+            if db_name == 'hsm':
+                self.image_db[db_name][table] = HSM (
+                    client = self.client[db_name],
+                    embedding_function = self.image_embedder,
+                    collection_name = table,
+                    persist_directory ="/tmp/hsm/",
+                )
+
                 
             self.image_retriever[db_name][table] = self.image_db[db_name][table].as_retriever(search_type="mmr").configurable_fields(
                 search_kwargs=ConfigurableField(
@@ -343,8 +368,26 @@ class DB_Handler:
                             "k": n_images,
                         },
                     )
+            if self.selected_db == 'hsm':
+                # self.update_image_retriever['hsm'] = self.image_db['hsm'][table].as_retriever(search_type="similarity", search_kwargs={'k':n_images, "filter":constraints})  
+                if date_string == 'today':
+                    constraints = {"date": [ "==", date_out]} 
+                    self.update_image_retriever['hsm'] = self.image_db['hsm'][table].as_retriever(search_type="similarity", search_kwargs={'k':n_images, "filter":constraints})          
+                elif date_out != str(today_date) and time_out =='00:00:00': ## exact day (example last firday)
+                    constraints = {"date": [ "==", date_out]} 
+                    self.update_image_retriever['hsm'] = self.image_db['hsm'][table].as_retriever(search_type="similarity", search_kwargs={'k':n_images, "filter":constraints}) 
+        
+                elif date_out == str(today_date) and time_out =='00:00:00': ## when search_date interprates words as dates output is todays date + time 00:00:00
+                    self.update_image_retriever['hsm'] = self.image_db['hsm'][table].as_retriever(search_type="similarity", search_kwargs={'k':n_images})    
+                else: ## Interval  of time:last 48 hours, last 2 days,..
+                    constraints = {"date_time": [ ">=", {"_date":iso_date_time}]}                
+                    self.update_image_retriever['hsm'] = self.image_db['hsm'][table].as_retriever(search_type="similarity", search_kwargs={'k':n_images, "filter":constraints}) 
+        
         else:
-            self.update_image_retriever[self.selected_db] = self.image_db[self.selected_db][table].as_retriever(search_type="mmr", search_kwargs={"k": n_images})
+            if self.selected_db == 'hsm':
+                self.update_image_retriever['hsm'] = self.image_db['hsm'][table].as_retriever(search_type="similarity", search_kwargs={'k':n_images})
+            else:
+                self.update_image_retriever[self.selected_db] = self.image_db[self.selected_db][table].as_retriever(search_type="mmr", search_kwargs={"k": n_images})
 
     def visual_rag_retrieval(
             self,

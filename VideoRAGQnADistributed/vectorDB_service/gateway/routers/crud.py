@@ -19,7 +19,7 @@ router = APIRouter(tags=["Basic CRUD operations"])
 
 
 class Table(BaseModel):
-    db_name: str = Field(..., description="Supported: chroma, vdms", example="chroma")
+    db_name: str = Field(..., description="Supported: chroma, vdms, hsm", example="chroma")
     table: str = Field(..., description="table or collection name", example="test", min_length=3, max_length=63)
     vtype: str = Field(..., description="Supported: text, image", example="text")
 

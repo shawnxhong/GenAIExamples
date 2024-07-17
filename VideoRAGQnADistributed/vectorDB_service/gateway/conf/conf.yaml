@@ -8,6 +8,8 @@ chroma_service:
 vdms_service:
   port: 55555
   engine: "FaissFlat"
+hsm_service:
+  port: 50051
 text_embedder: "all-MiniLM-L12-v2"
 image_embedder: "ViT-g-14"
 image_checkpoint: "laion2b_s34b_b88k"

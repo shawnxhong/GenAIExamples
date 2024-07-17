@@ -24,7 +24,7 @@ logging.basicConfig(
 router = APIRouter(prefix="/visual_rag_retriever", tags=["visual_rag_retriever"])
 
 class DB_Name(BaseModel):
-    selected_db: Optional[str] = Field(..., description="Supported: chroma, vdms", example="chroma")
+    selected_db: Optional[str] = Field(..., description="Supported: chroma, vdms, hsm", example="chroma")
 
 class ImageMetadata(BaseModel):
     metadatas: List[dict]
@@ -90,7 +90,7 @@ async def add_images(
 
     return JSONResponse({"message:": f"successfully add {len(uris)} images to {db_handler.selected_db}"})
 
-@router.get("/query", summary="Query video llama retriever, multi-modal")
+@router.get("/query", summary="Query video llama retriever, with time")
 @router.get("/query/", include_in_schema=False)
 async def visual_rag_query(
         prompt: str,

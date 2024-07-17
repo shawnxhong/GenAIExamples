@@ -1,0 +1,184 @@
+// version: 0.999
+/*
+# HSM Service Interface
+
+## Communication Mode:
+
+- Client-Server: The service operates in a client-server model where clients send requests to a server running the HSM service.
+- gRPC: The communication protocol is gRPC for efficient and language-neutral remote procedure calls.
+- Request-Response: Clients send requests and receive corresponding responses from the server.
+
+## Server State:
+
+- Stateless for Clients: Connections and contexts for individual clients are not maintained on the server side.
+- Stateful for VectorDBs: The server manages the state of loaded or created VectorDBs. This includes:
+  - DB Status: Indicates whether the VectorDB is running (e.g., RUNNING).
+  - DB Version: Tracks the version of the VectorDB software being used.
+  - DB Cache Size: Monitors the size of the in-memory cache used by the VectorDB.
+
+## Operational Objects:
+
+- VectorDBs: The primary operational objects managed by the service.
+- Vectors: Data points stored within a VectorDB.
+
+## Operational Sequence:
+
+1. Load or Create VectorDB: Clients initiate interactions by loading an existing VectorDB or creating a new one. This operation returns a handle used for subsequent actions.
+
+2.  Operations with Handle: All further actions on vectors or the database require this handle obtained in step 1. The server supports only one handle per operation.
+
+3. Supported Operations:
+  - Add Vectors: Clients send vectors to be added to the specified VectorDB using the handle.
+  - Query Vectors: Clients can submit queries to retrieve specific vectors from the VectorDB using the handle.
+  - Delete Vectors:
+  - Flush Cache: Clients can trigger a flush operation to write the in-memory cache of a VectorDB back to persistent storage using the handle.
+
+4. Multiple Vectors per Handle: A single server call with a handle can operate on multiple vectors (e.g., adding a batch of vectors or querying multiple vectors).
+
+## Additional Notes:
+
+- The interface emphasizes performance and scalability by maintaining stateless connections for clients.
+- Limited state information is stored for VectorDBs for basic monitoring and control.
+- The interface focuses on core operations for managing and manipulating vectors within VectorDBs.
+
+*/
+
+syntax = "proto3";
+
+package hsm; // Matches the C++ namespace
+
+enum DT {
+  DT_FLOAT = 0;
+  DT_UINT8 = 1;
+  DT_INT8 = 2;
+}
+
+enum DF{
+  DF_L2 = 0;
+  DF_IP = 1;
+  DF_Cosine = 2;
+}
+
+// Define a message type for the request of the `load` function
+message LoadRequest {
+  string db_dir = 1; //should be existed and have all the files needed in it
+}
+
+message LoadResponse {
+  int64 db_handle = 1; // success: >0, the value is a handle for calling add() and build()
+			                    // failed: <=0
+}
+
+// Define a message type for the request of the `create` function
+message CreateRequest {
+  string db_dir = 1; //should be existed and empty
+  DT data_type = 2;
+  uint32 dimension = 3;
+}
+
+message CreateResponse {
+  int64 db_handle = 1; // success: >0, the value is a handle for calling add() and build()
+			                    // failed: <=0
+}
+
+// Define a message type for the request of the `close` function
+message CloseRequest {
+  optional uint64 db_handle = 1;  // no handle or handle==0 to close all DBs
+}
+
+message CloseResponse {
+  int32 ret = 1; // o for success
+}
+
+message NPArray {
+  repeated float float_elems = 1;
+  bytes bytes_elem = 2; /*for unit8 and int8 */
+  uint32 dims = 3;
+  uint32 npts = 4;
+}
+
+// Define a message type for the request of the `add` function
+message AddRequest {
+  uint64 db_handle = 1;
+  repeated uint32 vector_ids = 2;
+  NPArray vectors = 3;
+}
+
+// Define a message type for the response of the `add` function
+message AddResponse {
+  uint32 ok_added = 1;  // how many vectors successfully added
+}
+
+// Define a message type for the request of the `build` function
+message BuildRequest {
+  message BuildParam {
+    DF dist_fn = 1;
+    uint32 R = 2;
+    uint32 L = 3;
+    uint32 B = 4;
+    uint32 T = 5;
+    uint32 QD = 6;
+  }
+  uint64 db_handle = 1;  // Using int64 for db_handle_t
+  optional BuildParam param = 2;  // Optional parameter using the BuildParam message
+}
+
+// Define a message type for the response of the `build` function
+message BuildResponse {
+  int32 result = 1;  // 0 for success
+}
+
+message QueryRequest {
+  uint64 db_handle = 1;  // Using int64 for db_handle_t
+  NPArray vectors = 2;
+  uint64 k = 3;
+  uint32 Ls = 4;
+  bool debug = 5;
+}
+
+message QueryResponse {
+  message kNN {
+    message DebugInfo {
+      uint32 index = 1;
+      float dist = 2;
+      uint32 latency_us = 3;
+    }
+    repeated uint32 vector_ids = 1;
+    repeated DebugInfo debug_info = 2;
+  }
+
+  repeated kNN nns = 1;
+}
+
+// Define a message type for the request of the `load` function
+message StatusRequest {
+  uint64 db_handle = 1;
+}
+
+message StatusResponse {
+  enum DB_STATUS {
+    DB_STATUS_CACHE_ONLY_RUNNING = 0;
+    DB_STATUS_RUNNING = 1;
+    DB_STATUS_BUILDING = 2;
+  }
+
+  message DBStatus {
+    string db_dir = 1;
+    uint64 db_handle = 2;
+    DB_STATUS status = 3;
+    uint64 cache_size = 4;
+  }
+
+  repeated DBStatus db_status = 1;
+}
+
+// Service definition for the HSM library functions
+service HSMService {
+  rpc Load (LoadRequest) returns (LoadResponse) {}
+  rpc Create (CreateRequest) returns (CreateResponse) {}
+  rpc Add (AddRequest) returns (AddResponse) {}
+  rpc Build (BuildRequest) returns (BuildResponse) {}
+  rpc Close (CloseRequest) returns (CloseResponse) {}
+  rpc Query (QueryRequest) returns (QueryResponse) {}
+  rpc Status (StatusRequest) returns (StatusResponse) {}
+}
