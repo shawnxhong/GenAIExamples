@@ -47,7 +47,8 @@ async def init(conf: initConfig):
     logging.info("Received conf: %s", conf)
     try:
         # post selected db to vid2text for data preparation
-        logging.info(f"selected_db:{conf.vectorDB}")
+        
+        logging.info(f"selected_db:{conf.vectorDB.lower()}")
         results = post_data(prepare_db_url, {"selected_db": conf.vectorDB})
         
         # TODO: post selected db to model server for setup
