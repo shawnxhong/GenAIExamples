@@ -4,7 +4,7 @@ services:
     environment:
       - ANONYMIZED_TELEMETRY=False
       - ALLOW_RESET=TRUE
-      - IS_PERSISTENT=True
+      - IS_PERSISTENT=False
       - PERSIST_DIRECTORY=${PERSIST_DIRECTORY:-/chroma/chroma}
     ports:
       - "8000:8000"
@@ -33,12 +33,12 @@ services:
       - https_proxy=${https_proxy}
       - HTTPS_PROXY=${https_proxy}
       - VECTORDB_SERVICE_HOST_IP=${VECTORDB_SERVICE_HOST_IP:-127.0.0.1}
-      - IS_PERSISTENT=True
+      - IS_PERSISTENT=False
     volumes:
       - "./gateway/:/gateway"
       - "/etc/timezone:/etc/timezone:ro"
       - "/etc/localtime:/etc/localtime:ro"
-      - "/$USER/.cache/huggingface:/root/.cache/huggingface"
+      - "/home/$USER/.cache/huggingface:/root/.cache/huggingface"
       - vectordb-data:/home/data
     depends_on:
       - chroma

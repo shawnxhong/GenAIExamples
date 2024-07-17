@@ -22,4 +22,4 @@ services:
       - "./ray_serve/:/ray_serve/"
       - "/etc/timezone:/etc/timezone:ro"
       - "/etc/localtime:/etc/localtime:ro"
-      - "../ckpt/llama-2-7b-chat-hf:/ray_serve/llama-2-7b-chat-hf"
+      - "../ckpt/Llama-2-7b-chat-hf:/ray_serve/llama-2-7b-chat-hf"

@@ -36,4 +36,53 @@ services:
     volumes:
       - "/etc/timezone:/etc/timezone:ro"
       - "/etc/localtime:/etc/localtime:ro"
-      - "/$USER/.cache/huggingface:/root/.cache/huggingface"
+      - "/home/huilingb/.cache/huggingface:/root/.cache/huggingface"
+  vid2text:
+    build:
+      context: .
+      dockerfile: ./vid2text/Dockerfile
+      cache_from:
+        - vid2text:latest
+      args:
+        http_proxy: ${http_proxy}
+        https_proxy: ${https_proxy}
+    image: vid2text:latest
+    # stdin_open: true # docker run -i
+    # tty: true        # docker run -t
+    # entrypoint: /bin/bash
+    hostname: vid2text
+    container_name: vid2text
+    ports:
+      - "7777:7777"
+      - "7999:7999"
+    environment:
+      - GENERATE=${GENERATE:-False}
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/home/$USER/.cache/huggingface/hub:/root/.cache/huggingface/hub"
+      - "/home/$USER/.cache/torch/hub:/root/.cache/torch/hub"
+      - "./ckpt/Video-LLaMA-2-7B-Finetuned:/vid2text/Video-LLaMA-2-7B-Finetuned"
+  rag-agent:
+    build:
+      context: .
+      dockerfile: ./rag-agent/gateway/Dockerfile
+      cache_from:
+        - rag-agent:latest
+      args:
+        HTTP_PROXY: ${http_proxy}
+        HTTPS_PROXY: ${https_proxy}
+    image: rag-agent:latest
+    hostname: rag-agent
+    container_name: rag-agent
+    # stdin_open: true # docker run -i
+    # tty: true        # docker run -t
+    # entrypoint: /bin/bash
+    ports:
+      - "7000:7000"
+    volumes:
+      # - "./rag-agent/gateway:/gateway"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    depends_on:
+      - vid2text
