@@ -42,8 +42,6 @@ class ChatHandler:
         model_config = cfg.model_cfg
         # model_config.device_8bit = args.gpu_id
         model_cls = registry.get_model_class(model_config.arch)
-        # model.llama_model.generate(
-        
         model = model_cls.from_config(model_config).to('cpu')
         model.eval()
         vis_processor_cfg = cfg.datasets_cfg.webvid.vis_processor.train
@@ -95,4 +93,3 @@ class ChatHandler:
             self.chat_state.messages = list()
         if self.img_list is not None:
             self.img_list = list()
-        self.set_para()

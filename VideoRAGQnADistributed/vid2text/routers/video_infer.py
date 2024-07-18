@@ -68,6 +68,7 @@ async def video_infer(video: UploadFile = File(...),
             logging.info(f"start generate description for {video_location}")
             chat_handler.upload(up_video=video_location, audio_flag=True)
             llm_message = chat_handler.ask_answer(user_message="describe the video in detail")
+            chat_handler.reset() # reset context
             
             if not os.path.exists(desc_dir):
                 os.makedirs(desc_dir)
