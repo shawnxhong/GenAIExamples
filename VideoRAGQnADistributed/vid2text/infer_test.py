@@ -14,6 +14,16 @@ from video_llama.runners import *
 from video_llama.tasks import *
 
 
+def set_proxy(addr:str):
+    # for DNS: "http://child-prc.intel.com:913"
+    # for Huggingface downloading: "http://proxy-igk.intel.com:912"
+    os.environ['http_proxy'] = addr
+    os.environ['https_proxy'] = addr
+    os.environ['HTTP_PROXY'] = addr
+    os.environ['HTTPS_PROXY'] = addr
+
+set_proxy("http://proxy-igk.intel.com:912")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Demo")
     parser.add_argument("--cfg-path", default='eval_configs/video_llama_eval_withaudio.yaml', help="path to configuration file.")
@@ -47,11 +57,11 @@ class ChatBot:
         model_config = cfg.model_cfg
         model_config.device_8bit = args.gpu_id
         model_cls = registry.get_model_class(model_config.arch)
-        model = model_cls.from_config(model_config).to('cuda:{}'.format(args.gpu_id))
+        model = model_cls.from_config(model_config).to('cpu')
         model.eval()
         vis_processor_cfg = cfg.datasets_cfg.webvid.vis_processor.train
         vis_processor = registry.get_processor_class(vis_processor_cfg.name).from_config(vis_processor_cfg)
-        chat = Chat(model, vis_processor, device='cuda:{}'.format(args.gpu_id))
+        chat = Chat(model, vis_processor, device='cpu')
         print('Initialization Finished')
         return chat
 
