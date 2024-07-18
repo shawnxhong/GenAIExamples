@@ -13,7 +13,8 @@ from video_llama.processors import *
 from video_llama.runners import *
 from video_llama.tasks import *
 
-
+# This is an individual test for the video llama chat
+# Note: please check model path in eval_cofigs before run
 def set_proxy(addr:str):
     # for DNS: "http://child-prc.intel.com:913"
     # for Huggingface downloading: "http://proxy-igk.intel.com:912"
@@ -55,7 +56,7 @@ class ChatBot:
         print('Initializing Chat')
         cfg = Config(args)
         model_config = cfg.model_cfg
-        model_config.device_8bit = args.gpu_id
+        # model_config.device_8bit = args.gpu_id
         model_cls = registry.get_model_class(model_config.arch)
         model = model_cls.from_config(model_config).to('cpu')
         model.eval()
